@@ -29,7 +29,7 @@ Single-letter mode flags (any order, before any subcommand):
 
 - `w` — ignore whitespace
 - `s` — side-by-side preview
-- `x` — exclude already-viewed files
+- `x` — exclude files in `/generated` folder
 - `m` — diff against merge-base of `origin/main` (or `master`)
 - `p` — diff against `@{upstream}`
 - `t` — open the target picker
