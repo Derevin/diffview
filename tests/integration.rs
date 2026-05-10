@@ -789,8 +789,11 @@ fn generate_target_list_no_merge_base() {
     let targets: Vec<&str> = rows.iter().map(|(_, t)| t.as_str()).collect();
     assert_eq!(targets[0], "HEAD");
     let short = repo.git(&["rev-parse", "--short", "HEAD"]).trim().to_string();
-    let want = format!("{}^..{}", short, short);
-    assert!(targets.iter().any(|&t| t == want), "targets: {:?}", targets);
+    assert!(
+        targets.iter().any(|&t| t.ends_with(&format!("..{}", short))),
+        "no per-commit row for HEAD: {:?}",
+        targets,
+    );
 }
 
 #[test]
@@ -815,6 +818,40 @@ fn generate_target_list_with_merge_base() {
     let displays: Vec<&str> = rows.iter().map(|(d, _)| d.as_str()).collect();
     assert!(displays.iter().any(|d| d.contains("Uncommitted")));
     assert!(displays.iter().any(|d| d.contains("Since merge base")));
+}
+
+#[test]
+fn generate_target_list_root_commit_target_diffs_cleanly() {
+    let repo = Repo::new();
+    let stubs = Stubs::new();
+    let mut state = State::new();
+    state.file("DIFFVIEW_WS_FILE", "");
+    state.file("DIFFVIEW_RECENT_LIMIT_FILE", "10");
+    state.file("DIFFVIEW_MODE_FILE", "target");
+    state.file("DIFFVIEW_TARGET_FILE", "HEAD");
+    let head = repo.git(&["rev-parse", "HEAD"]).trim().to_string();
+    state.setenv("DIFFVIEW_MERGE_BASE_TARGET", &head);
+    state.setenv("DIFFVIEW_TOPLEVEL", repo.path.to_string_lossy().as_ref());
+    state.setenv("DIFFVIEW_TARGET", "HEAD");
+
+    let r = run(&repo, &state, &stubs, &["list"]);
+    let rows = parse_list_rows(&r.stdout);
+
+    let short = repo.git(&["rev-parse", "--short", "HEAD"]).trim().to_string();
+    let row = rows.iter().find(|(_, t)| t.ends_with(&format!("..{}", short)) && t.as_str() != "HEAD");
+    let target = row.map(|(_, t)| t.as_str()).unwrap_or_else(|| panic!("no per-commit row found: {:?}", rows));
+
+    let out = std::process::Command::new("git")
+        .args(["diff", "--numstat", target])
+        .current_dir(&repo.path)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "git diff failed for root-commit target {:?}: stderr={}",
+        target,
+        String::from_utf8_lossy(&out.stderr),
+    );
 }
 
 // --- preview ---

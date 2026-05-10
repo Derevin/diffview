@@ -532,7 +532,7 @@ fn generate_list() -> String {
 }
 
 fn emit_commits_shortstat(ws: &str, log_args: &[&str]) -> String {
-    let mut args: Vec<&str> = vec!["log", "--shortstat", "--pretty=tformat:COMMIT %h %s"];
+    let mut args: Vec<&str> = vec!["log", "--shortstat", "--pretty=tformat:COMMIT %h\t%P\t%s"];
     if !ws.is_empty() {
         args.push(ws);
     }
@@ -544,17 +544,23 @@ fn emit_commits_shortstat(ws: &str, log_args: &[&str]) -> String {
         if let Some(rest) = line.strip_prefix("COMMIT ") {
             commit_line = rest.to_string();
         } else if !line.is_empty() && !commit_line.is_empty() {
-            let sp: Vec<&str> = commit_line.splitn(2, ' ').collect();
-            if sp.len() != 2 {
+            let sp: Vec<&str> = commit_line.splitn(3, '\t').collect();
+            if sp.len() != 3 {
                 commit_line.clear();
                 continue;
             }
-            let (h, subj) = (sp[0], sp[1]);
+            let (h, parents, subj) = (sp[0], sp[1], sp[2]);
+            // Root commits (no parent) can't use `<h>^..<h>` — substitute empty tree.
+            let base = if parents.is_empty() {
+                "4b825dc642cb6eb9a060e54bf8d69288fbee4904".to_string()
+            } else {
+                format!("{}^", h)
+            };
             let stat = format_stats(line);
             if !stat.is_empty() {
-                lines.push(format!("{} ({}) {}\x1f{}^..{}", subj, stat, h, h, h));
+                lines.push(format!("{} ({}) {}\x1f{}..{}", subj, stat, h, base, h));
             } else {
-                lines.push(format!("{} {}\x1f{}^..{}", subj, h, h, h));
+                lines.push(format!("{} {}\x1f{}..{}", subj, h, base, h));
             }
             commit_line.clear();
         }
