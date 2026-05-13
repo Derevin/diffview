@@ -778,7 +778,7 @@ fn cmd_toggle_target(args: &[String]) -> i32 {
     write_file(&env_var("DIFFVIEW_MODE_FILE", ""), "target");
     println!(
         "reload-sync({0} list)+disable-search+rebind({1})\
-+change-prompt(target> )+clear-query+refresh-preview\
++change-prompt(target> )+clear-query+refresh-preview+first\
 +change-header({2})+change-ghost({3})",
         current_self(),
         all_typing_keys(),
@@ -926,7 +926,7 @@ fn cmd_enter_action(args: &[String]) -> i32 {
         let saved = read_file(&env_var("DIFFVIEW_FILTER_FILE", ""), "");
         println!(
             "reload-sync({0} list)+disable-search+rebind({1})\
-+change-prompt(diffview> )+change-query({2})+refresh-preview\
++change-prompt(diffview> )+change-query({2})+refresh-preview+first\
 +change-header({3})+change-ghost({4})",
             me, typing, saved, header(), VIEW_GHOST
         );
@@ -985,7 +985,7 @@ fn cmd_escape_action(args: &[String]) -> i32 {
         let saved = read_file(&env_var("DIFFVIEW_FILTER_FILE", ""), "");
         println!(
             "reload-sync({0} list)+disable-search+rebind({1})\
-+change-prompt(diffview> )+change-query({2})+refresh-preview\
++change-prompt(diffview> )+change-query({2})+refresh-preview+first\
 +change-header({3})+change-ghost({4})",
             me, typing, saved, header(), VIEW_GHOST
         );
