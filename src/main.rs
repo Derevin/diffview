@@ -1245,6 +1245,11 @@ fi
 
 fn main() {
     let argv: Vec<String> = env::args().skip(1).collect();
+    if argv.iter().any(|s| s == "--help") {
+        println!("fzf-driven git diff viewer.");
+        println!("Usage: diffview [wsxmpt|~N ...]  (w=ws, s=sbs, x=excl-gen, m=merge-base, p=upstream, t=target picker, ~N=HEAD~N)");
+        std::process::exit(0);
+    }
     let mut a = parse_args(&argv);
     init_state(&mut a);
     if let Some(rc) = dispatch(&a) {
