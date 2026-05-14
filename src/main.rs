@@ -9,8 +9,8 @@ use std::process::{Command, Stdio};
 
 const DEFAULT_CONTEXT: u32 = 4;
 const MAX_FILES: usize = 500;
-const UNPREFIXED_KEYS: &str = "w,x,s,g,o,/";
-const IGNORE_KEYS: &str = "a,b,c,d,e,f,h,i,j,k,l,m,n,p,q,r,t,u,v,y,z,\
+const UNPREFIXED_KEYS: &str = "w,x,s,g,o,q,/";
+const IGNORE_KEYS: &str = "a,b,c,d,e,f,h,i,j,k,l,m,n,p,r,t,u,v,y,z,\
 A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,\
 0,1,2,3,4,5,6,7,8,9,space";
 const VIEW_GHOST: &str = "/ to filter";
@@ -1152,6 +1152,7 @@ fn run_fzf(a: &Args) -> i32 {
         format!("g:transform({} toggle-target {{fzf:prompt}} {{q}})", me),
         format!("ctrl-s:transform({} toggle-sbs)", me),
         format!("s:transform({} toggle-sbs)", me),
+        "q:abort".to_string(),
         format!("/:transform({} enter-filter {{fzf:prompt}})", me),
         format!("enter:transform({} enter-action {{fzf:prompt}} {{q}} {{2}})", me),
         format!("esc:transform({} escape-action {{fzf:prompt}})", me),
