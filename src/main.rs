@@ -376,17 +376,13 @@ fn parse_rename_path(path: &str) -> Option<(String, String)> {
 /// `paths` contains every changed file (incl. binaries, incl. 0/0 renames) — lets
 /// callers skip a redundant `git diff --name-only` against the same target.
 fn parse_numstat(
-    ws: &str,
+    _ws: &str,
     target: &str,
 ) -> (Vec<String>, HashMap<String, String>, HashMap<String, String>) {
     let mut paths: Vec<String> = Vec::new();
     let mut file_stats: HashMap<String, String> = HashMap::new();
     let mut renamed: HashMap<String, String> = HashMap::new();
-    let mut args: Vec<&str> = vec!["diff", "--numstat"];
-    if !ws.is_empty() {
-        args.push(ws);
-    }
-    args.push(target);
+    let args: Vec<&str> = vec!["diff", "--numstat", target];
     for line in git(&args).lines() {
         let parts: Vec<&str> = line.splitn(3, '\t').collect();
         if parts.len() != 3 {

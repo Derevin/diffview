@@ -612,6 +612,25 @@ fn generate_list_basic() {
 }
 
 #[test]
+fn generate_list_ws_mode_includes_whitespace_only_change() {
+    let repo = Repo::new();
+    let stubs = Stubs::new();
+    let mut state = State::new();
+    repo.write("a.txt", "foo bar\n");
+    repo.write("b.txt", "x\n");
+    repo.commit_all("seed");
+    repo.write("a.txt", "foo  bar\n");
+    repo.write("b.txt", "y\n");
+    list_env(&mut state, &repo, "HEAD", "false", "-w");
+
+    let r = run(&repo, &state, &stubs, &["list"]);
+    let rows = parse_list_rows(&r.stdout);
+    let targets: Vec<&str> = rows.iter().map(|(_, t)| t.as_str()).collect();
+    assert!(targets.contains(&"a.txt"), "whitespace-only change should still appear: {:?}", targets);
+    assert!(targets.contains(&"b.txt"));
+}
+
+#[test]
 fn generate_list_rename_suffix() {
     let repo = Repo::new();
     let stubs = Stubs::new();
