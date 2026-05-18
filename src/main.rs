@@ -1047,11 +1047,12 @@ impl Drop for StateFiles {
 }
 
 fn make_temp_file(content: &str) -> std::io::Result<PathBuf> {
-    let tmpdir = env::temp_dir();
+    let tmpdir = env::temp_dir().join("diffview");
+    fs::create_dir_all(&tmpdir)?;
     let pid = std::process::id();
     static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let path = tmpdir.join(format!("diffview-{}-{}", pid, n));
+    let path = tmpdir.join(format!("{}-{}", pid, n));
     let mut f = fs::OpenOptions::new()
         .write(true)
         .create_new(true)
