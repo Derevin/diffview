@@ -37,6 +37,29 @@ Single-letter mode flags (any order, before any subcommand):
 
 There is no `--help`. Read the source.
 
+## Configuration
+
+`diffview` opens the file under the cursor in an editor. Choose which one in
+`${XDG_CONFIG_HOME:-~/.config}/diffview/config` — a simple `key = value` file
+(`#` comments allowed):
+
+```
+editor = micro $file +$line
+```
+
+`editor` is a command template: split on whitespace into argv (run directly, no
+shell), with `$file` (the file) and `$line` (first changed line, or 1) substituted.
+The template carries your editor's own line-jump flag, so anything works:
+
+```
+editor = nvim +$line $file
+editor = micro $file +$line
+editor = code --goto $file:$line
+```
+
+With no config, the default is `${VISUAL:-${EDITOR:-vi}} +$line $file` — the `+N`
+convention is understood by vi/vim/nvim/nano/emacs/micro.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

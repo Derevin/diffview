@@ -146,11 +146,20 @@ exit 0"#,
 
 // --- cmd_open ---
 
-#[test]
-fn cmd_open_extracts_first_hunk_line() {
+/// Write a diffview config selecting `template` as the editor, under a temp
+/// XDG_CONFIG_HOME the run will read, and stub `editor_name` so its argv is logged.
+fn config_editor(state: &mut State, stubs: &Stubs, editor_name: &str, template: &str) {
+    let cfg_dir = state.dir.join("diffview");
+    fs::create_dir_all(&cfg_dir).unwrap();
+    fs::write(cfg_dir.join("config"), format!("# diffview config\neditor = {}\n", template)).unwrap();
+    let xdg = state.dir.to_string_lossy().into_owned();
+    state.setenv("XDG_CONFIG_HOME", &xdg);
+    stubs.record(editor_name, "");
+}
+
+/// Repo whose working tree changes foo.py around line 42 (a single hunk there).
+fn repo_with_hunk_at_42() -> Repo {
     let repo = Repo::new();
-    let stubs = Stubs::new();
-    let mut state = State::new();
     let big: String = (1..60).map(|i| format!("line {}\n", i)).collect();
     repo.write("foo.py", &big);
     repo.commit_all("init foo");
@@ -158,25 +167,32 @@ fn cmd_open_extracts_first_hunk_line() {
     lines[41] = "MODIFIED";
     let modified: String = lines.iter().map(|l| format!("{}\n", l)).collect();
     repo.write("foo.py", &modified);
+    repo
+}
 
+#[test]
+fn cmd_open_config_editor_gets_file_and_hunk_line() {
+    let repo = repo_with_hunk_at_42();
+    let stubs = Stubs::new();
+    let mut state = State::new();
     state.file("DIFFVIEW_MODE_FILE", "files");
     state.file("DIFFVIEW_TARGET_FILE", "HEAD");
     state.file("DIFFVIEW_WS_FILE", "");
     state.setenv("DIFFVIEW_TOPLEVEL", repo.path.to_string_lossy().as_ref());
-    stubs.record("nvim", "");
+    config_editor(&mut state, &stubs, "myed", "myed $file +$line");
 
     let r = run(&repo, &state, &stubs, &["open", "foo.py"]);
     assert_eq!(r.code, 0);
-    let calls = stubs.calls("nvim");
+    let calls = stubs.calls("myed");
     assert_eq!(calls.len(), 1);
-    assert!(calls[0][0].starts_with('+'));
-    let line: i32 = calls[0][0][1..].parse().unwrap();
+    assert_eq!(calls[0][0], "foo.py");
+    assert!(calls[0][1].starts_with('+'));
+    let line: i32 = calls[0][1][1..].parse().unwrap();
     assert!(line >= 30 && line <= 45, "expected hunk line ~42, got {}", line);
-    assert_eq!(calls[0][1], "foo.py");
 }
 
 #[test]
-fn cmd_open_defaults_to_line_one_without_hunk() {
+fn cmd_open_substitutes_line_before_file_and_defaults_to_one() {
     let repo = Repo::new();
     let stubs = Stubs::new();
     let mut state = State::new();
@@ -186,12 +202,15 @@ fn cmd_open_defaults_to_line_one_without_hunk() {
     state.file("DIFFVIEW_TARGET_FILE", "HEAD");
     state.file("DIFFVIEW_WS_FILE", "");
     state.setenv("DIFFVIEW_TOPLEVEL", repo.path.to_string_lossy().as_ref());
-    stubs.record("nvim", "");
+    // nvim-style ordering: line flag before the file; no hunk → line 1.
+    config_editor(&mut state, &stubs, "myed", "myed +$line $file");
 
     let r = run(&repo, &state, &stubs, &["open", "foo.py"]);
     assert_eq!(r.code, 0);
-    let calls = stubs.calls("nvim");
+    let calls = stubs.calls("myed");
+    assert_eq!(calls.len(), 1);
     assert_eq!(calls[0][0], "+1");
+    assert_eq!(calls[0][1], "foo.py");
 }
 
 #[test]
@@ -200,10 +219,37 @@ fn cmd_open_noop_in_target_mode() {
     let stubs = Stubs::new();
     let mut state = State::new();
     state.file("DIFFVIEW_MODE_FILE", "target");
-    stubs.record("nvim", "");
+    config_editor(&mut state, &stubs, "myed", "myed $file +$line");
     let r = run(&repo, &state, &stubs, &["open", "foo.py"]);
     assert_eq!(r.code, 0);
-    assert!(stubs.calls("nvim").is_empty());
+    assert!(stubs.calls("myed").is_empty());
+}
+
+#[test]
+fn cmd_open_falls_back_to_env_editor_without_config() {
+    let repo = Repo::new();
+    let stubs = Stubs::new();
+    let mut state = State::new();
+    repo.write("foo.py", "seed\n");
+    repo.commit_all("init foo");
+    state.file("DIFFVIEW_MODE_FILE", "files");
+    state.file("DIFFVIEW_TARGET_FILE", "HEAD");
+    state.file("DIFFVIEW_WS_FILE", "");
+    state.setenv("DIFFVIEW_TOPLEVEL", repo.path.to_string_lossy().as_ref());
+    // No config file: point XDG at the config-less temp dir and rely on the
+    // ${VISUAL:-${EDITOR:-vi}} +$line $file default. Neutralize any inherited VISUAL.
+    let xdg = state.dir.to_string_lossy().into_owned();
+    state.setenv("XDG_CONFIG_HOME", &xdg);
+    state.setenv("VISUAL", "");
+    state.setenv("EDITOR", "myed");
+    stubs.record("myed", "");
+
+    let r = run(&repo, &state, &stubs, &["open", "foo.py"]);
+    assert_eq!(r.code, 0);
+    let calls = stubs.calls("myed");
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0][0], "+1");
+    assert_eq!(calls[0][1], "foo.py");
 }
 
 // --- cmd_toggle (viewed marking) ---

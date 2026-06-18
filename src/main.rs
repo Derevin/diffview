@@ -858,6 +858,46 @@ fn cmd_context(args: &[String]) -> i32 {
     0
 }
 
+/// The configured editor command template, or a sensible default. Read from
+/// `${XDG_CONFIG_HOME:-~/.config}/diffview/config` — a `key = value` file (`#`
+/// comments allowed) — under the `editor` key. With no config, falls back to
+/// `${VISUAL:-${EDITOR:-vi}} +$line $file` (the `+N` convention most editors share).
+fn editor_template() -> String {
+    let base = env::var("XDG_CONFIG_HOME")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| format!("{}/.config", env_var("HOME", "")));
+    if let Ok(content) = fs::read_to_string(format!("{}/diffview/config", base)) {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, val)) = line.split_once('=') {
+                if key.trim() == "editor" && !val.trim().is_empty() {
+                    return val.trim().to_string();
+                }
+            }
+        }
+    }
+    let ed = env::var("VISUAL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| env::var("EDITOR").ok().filter(|s| !s.is_empty()))
+        .unwrap_or_else(|| "vi".to_string());
+    format!("{} +$line $file", ed)
+}
+
+/// Split a command template on whitespace into argv, substituting `$file` and
+/// `$line` within each token — so a path with spaces stays one argument and
+/// nothing is routed through a shell.
+fn build_open_argv(template: &str, file: &str, line: &str) -> Vec<String> {
+    template
+        .split_whitespace()
+        .map(|tok| tok.replace("$file", file).replace("$line", line))
+        .collect()
+}
+
 fn cmd_open(args: &[String]) -> ! {
     if read_file(&env_var("DIFFVIEW_MODE_FILE", ""), "") == "target" {
         std::process::exit(0);
@@ -886,13 +926,17 @@ fn cmd_open(args: &[String]) -> ! {
             break;
         }
     }
-    let rc = Command::new("nvim")
-        .arg(format!("+{}", line))
-        .arg(&file)
+    let argv = build_open_argv(&editor_template(), &file, &line);
+    if argv.is_empty() {
+        eprintln!("diffview: empty editor command (see ~/.config/diffview/config)");
+        std::process::exit(127);
+    }
+    let rc = Command::new(&argv[0])
+        .args(&argv[1..])
         .status()
         .map(|s| s.code().unwrap_or(0))
         .unwrap_or_else(|e| {
-            eprintln!("diffview: failed to spawn nvim: {}", e);
+            eprintln!("diffview: failed to spawn editor {:?}: {}", argv[0], e);
             127
         });
     std::process::exit(rc);
@@ -1378,5 +1422,25 @@ mod tests {
     #[test]
     fn parse_rename_path_no_arrow() {
         assert_eq!(parse_rename_path("just/a/path.py"), None);
+    }
+
+    #[test]
+    fn build_open_argv_keeps_spaced_path_as_one_arg() {
+        assert_eq!(
+            build_open_argv("micro $file +$line", "src/a b.rs", "42"),
+            vec!["micro", "src/a b.rs", "+42"]
+        );
+    }
+
+    #[test]
+    fn build_open_argv_substitutes_anywhere_in_token() {
+        assert_eq!(
+            build_open_argv("nvim +$line $file", "f.rs", "7"),
+            vec!["nvim", "+7", "f.rs"]
+        );
+        assert_eq!(
+            build_open_argv("code --goto $file:$line", "f.rs", "7"),
+            vec!["code", "--goto", "f.rs:7"]
+        );
     }
 }
