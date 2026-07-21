@@ -1160,7 +1160,6 @@ fn run_fzf(a: &Args) -> i32 {
     let binds: Vec<String> = vec![
         "ctrl-d:preview-half-page-down,ctrl-u:preview-half-page-up".to_string(),
         "page-down:preview-page-down,page-up:preview-page-up".to_string(),
-        "home:preview-half-page-up,end:preview-half-page-down".to_string(),
         "left:up,right:down".to_string(),
         "up:preview-up,down:preview-down".to_string(),
         "shift-left:backward-char,shift-right:forward-char".to_string(),
