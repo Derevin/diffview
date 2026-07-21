@@ -1,4 +1,4 @@
-// Black-box integration tests for cc-diffview.
+// Black-box integration tests for diffview.
 //
 // Pure-function tests live in src/main.rs (`#[cfg(test)] mod tests`); this file
 // only tests observable subprocess behavior.
