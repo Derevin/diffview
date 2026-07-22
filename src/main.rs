@@ -762,11 +762,7 @@ fn cmd_toggle_exclude() -> i32 {
 }
 
 fn cmd_toggle_target(args: &[String]) -> i32 {
-    let prompt = args.first().cloned().unwrap_or_default();
-    let query = args.get(1).cloned().unwrap_or_default();
-    if prompt.starts_with("send") {
-        return 0;
-    }
+    let query = args.first().cloned().unwrap_or_default();
     if read_file(&env_var("DIFFVIEW_MODE_FILE", ""), "") == "target" {
         return 0;
     }
@@ -1177,20 +1173,12 @@ fn run_fzf(a: &Args) -> i32 {
         "start:disable-search".to_string(),
         format!("{}:ignore", IGNORE_KEYS),
         format!(
-            "ctrl-e:execute({0} open {{2}})+reload-sync({0} list)+refresh-preview",
-            me
-        ),
-        format!(
             "o:execute({0} open {{2}})+reload-sync({0} list)+refresh-preview",
             me
         ),
-        format!("ctrl-w:transform({} toggle-ws)", me),
         format!("w:transform({} toggle-ws)", me),
-        format!("ctrl-x:transform({} toggle-exclude)", me),
         format!("x:transform({} toggle-exclude)", me),
-        format!("ctrl-g:transform({} toggle-target {{fzf:prompt}} {{q}})", me),
-        format!("g:transform({} toggle-target {{fzf:prompt}} {{q}})", me),
-        format!("ctrl-s:transform({} toggle-sbs)", me),
+        format!("g:transform({} toggle-target {{q}})", me),
         format!("s:transform({} toggle-sbs)", me),
         "q:abort".to_string(),
         format!("/:transform({} enter-filter {{fzf:prompt}})", me),

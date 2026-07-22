@@ -358,7 +358,7 @@ fn cmd_toggle_target_switches_to_target_mode() {
     let mode = state.file("DIFFVIEW_MODE_FILE", "files");
     let filt = state.file("DIFFVIEW_FILTER_FILE", "");
 
-    let r = run(&repo, &state, &stubs, &["toggle-target", "diffview> ", "myquery"]);
+    let r = run(&repo, &state, &stubs, &["toggle-target", "myquery"]);
     assert_eq!(fs::read_to_string(&mode).unwrap(), "target");
     assert_eq!(fs::read_to_string(&filt).unwrap(), "myquery");
     assert!(r.stdout.contains("change-prompt(target> )"));
@@ -372,18 +372,7 @@ fn cmd_toggle_target_noop_in_target_mode() {
     let stubs = Stubs::new();
     let mut state = State::new();
     state.file("DIFFVIEW_MODE_FILE", "target");
-    let r = run(&repo, &state, &stubs, &["toggle-target", "target> ", "q"]);
-    assert_eq!(r.code, 0);
-    assert_eq!(r.stdout, "");
-}
-
-#[test]
-fn cmd_toggle_target_noop_in_send_prompt() {
-    let repo = Repo::new();
-    let stubs = Stubs::new();
-    let mut state = State::new();
-    state.file("DIFFVIEW_MODE_FILE", "files");
-    let r = run(&repo, &state, &stubs, &["toggle-target", "send> ", "q"]);
+    let r = run(&repo, &state, &stubs, &["toggle-target", "q"]);
     assert_eq!(r.code, 0);
     assert_eq!(r.stdout, "");
 }
